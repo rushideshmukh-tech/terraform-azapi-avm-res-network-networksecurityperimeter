@@ -1,5 +1,5 @@
 terraform {
-  required_version = "~> 1.5"
+  required_version = "~> 1.9"
 
   required_providers {
     azurerm = {
@@ -49,16 +49,60 @@ resource "azurerm_resource_group" "this" {
 }
 
 # This is the module call
-# Do not specify location here due to the randomization above.
-# Leaving location as `null` will cause the module to use the resource group location
-# with a data source.
-module "test" {
+# Example: a Network Security Perimeter with one profile, one inbound access rule,
+# and no resource associations (add resource_associations to link PaaS resources).
+module "network_security_perimeter" {
   source = "../../"
 
-  # source             = "Azure/avm-<res/ptn>-<name>/azurerm"
-  # ...
+  # source  = "Azure/avm-res-network-networksecurityperimeter/azurerm"
+  # version = "~> 0.1"
+
+  name                = module.naming.unique-seed # use your own valid NSP name
   location            = azurerm_resource_group.this.location
-  name                = "TODO" # TODO update with module.naming.<RESOURCE_TYPE>.name_unique
   resource_group_name = azurerm_resource_group.this.name
   enable_telemetry    = var.enable_telemetry # see variables.tf
+
+  # NSP Profiles - flat map, one entry per profile
+  profiles = {
+    profile1 = {
+      name = "default-profile"
+    }
+  }
+
+  # NSP Access Rules - flat map, each rule references a profile via profile_key
+  access_rules = {
+    allow_inbound_corp = {
+      name             = "allow-inbound-corp-subnets"
+      profile_key      = "profile1"
+      direction        = "Inbound"
+      address_prefixes = ["10.0.0.0/8", "172.16.0.0/12"]
+    }
+    allow_outbound_storage = {
+      name                         = "allow-outbound-storage"
+      profile_key                  = "profile1"
+      direction                    = "Outbound"
+      fully_qualified_domain_names = ["*.blob.core.windows.net"]
+    }
+  }
+
+  # Resource associations link PaaS resources to this NSP.
+  # Uncomment and fill in the resource ID of a Private Link-enabled PaaS resource.
+  # resource_associations = {
+  #   storage_account = {
+  #     name                     = "assoc-storage"
+  #     private_link_resource_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<name>"
+  #     profile_key              = "profile1"
+  #     access_mode              = "Learning"
+  #   }
+  # }
+
+  # Optional: resource lock
+  # lock = {
+  #   kind = "CanNotDelete"
+  # }
+
+  tags = {
+    environment = "example"
+    module      = "avm-res-network-networksecurityperimeter"
+  }
 }
