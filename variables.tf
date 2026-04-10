@@ -60,6 +60,14 @@ DESCRIPTION
     condition     = alltrue([for _, v in var.access_rules : contains(["Inbound", "Outbound"], v.direction)])
     error_message = "The direction must be one of: 'Inbound', 'Outbound'."
   }
+  validation {
+    condition     = alltrue([for _, v in var.access_rules : can(regex("(^[a-zA-Z0-9]+[a-zA-Z0-9_.\\-]*[a-zA-Z0-9]+$)|(^[a-zA-Z0-9]$)", v.name)) && length(v.name) <= 80])
+    error_message = "All access rule names must be 1-80 characters, start and end with an alphanumeric character, and may contain alphanumeric, underscore, period, or hyphen."
+  }
+  validation {
+    condition     = alltrue([for _, v in var.access_rules : contains(keys(var.profiles), v.profile_key)])
+    error_message = "All access_rules[*].profile_key values must match a key defined in var.profiles."
+  }
 }
 
 variable "enable_telemetry" {
@@ -88,7 +96,7 @@ DESCRIPTION
 
   validation {
     condition     = var.lock != null ? contains(["CanNotDelete", "ReadOnly"], var.lock.kind) : true
-    error_message = "The lock level must be one of: 'None', 'CanNotDelete', or 'ReadOnly'."
+    error_message = "The lock level must be one of: 'CanNotDelete', or 'ReadOnly'."
   }
 }
 
@@ -103,6 +111,11 @@ A map of NSP profiles to create under the Network Security Perimeter. The map ke
 - `name` - (Required) The name of the profile. Must follow NSP naming constraints (1-80 chars, alphanumeric with `_`, `.`, `-`).
 DESCRIPTION
   nullable    = false
+
+  validation {
+    condition     = alltrue([for _, v in var.profiles : can(regex("(^[a-zA-Z0-9]+[a-zA-Z0-9_.\\-]*[a-zA-Z0-9]+$)|(^[a-zA-Z0-9]$)", v.name)) && length(v.name) <= 80])
+    error_message = "All profile names must be 1-80 characters, start and end with an alphanumeric character, and may contain alphanumeric, underscore, period, or hyphen."
+  }
 }
 
 variable "resource_associations" {
@@ -126,6 +139,14 @@ DESCRIPTION
   validation {
     condition     = alltrue([for _, v in var.resource_associations : contains(["Learning", "Enforced", "Audit"], v.access_mode)])
     error_message = "The access_mode must be one of: 'Learning', 'Enforced', 'Audit'."
+  }
+  validation {
+    condition     = alltrue([for _, v in var.resource_associations : can(regex("(^[a-zA-Z0-9]+[a-zA-Z0-9_.\\-]*[a-zA-Z0-9]+$)|(^[a-zA-Z0-9]$)", v.name)) && length(v.name) <= 80])
+    error_message = "All resource association names must be 1-80 characters, start and end with an alphanumeric character, and may contain alphanumeric, underscore, period, or hyphen."
+  }
+  validation {
+    condition     = alltrue([for _, v in var.resource_associations : contains(keys(var.profiles), v.profile_key)])
+    error_message = "All resource_associations[*].profile_key values must match a key defined in var.profiles."
   }
 }
 
